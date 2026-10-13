@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF-A</title>
+
+    <!-- MathLive（本地） -->
+    <script src="mathlive/mathlive.min.js"></script>
+
+    <!-- PDF.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+    <!-- pdf-lib -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+
+    <!-- html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <!-- 自定义样式 -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<!-- 链接悬浮预览 -->
+<div class="link-hover-preview" id="linkHoverPreview">
+    <div class="link-hover-header" id="linkHoverHeader">跳转到第 1 页</div>
+    <div class="link-hover-body">
+        <canvas id="linkHoverCanvas"></canvas>
+    </div>
+</div>
+
+<body>
+
+<div class="split-layout" id="splitLayout">
+
+    <!-- ==================== 左侧：PDF ==================== -->
+    <div class="pane-left" id="paneLeft">
+        <div class="pane-header">
+            <h2>
+                <i class="fas fa-file-pdf" style="color:#dc2626;"></i>
+                PDF 预览
+            </h2>
+            <button class="icon-btn open-panel-btn" id="openPanelBtn" title="展开批注面板">
+                <i class="fas fa-angles-left"></i>
+                <span>批注</span>
+            </button>
+        </div>
+
+        <div class="pane-body">
+
+            <div class="annot-toolbar" id="annotToolbar">
+                <button class="annot-tool-btn" data-tool="pen" id="toolPen" title="自由画笔" disabled>
+                    <i class="fas fa-pen"></i>
+                </button>
+                <button class="annot-tool-btn" data-tool="line" id="toolLine" title="直线" disabled>
+                    <i class="fas fa-slash"></i>
+                </button>
+                <button class="annot-tool-btn" data-tool="arrow" id="toolArrow" title="箭头" disabled>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+                <button class="annot-tool-btn" data-tool="highlight" id="toolHighlight" title="高亮" disabled>
+                    <i class="fas fa-highlighter"></i>
+                </button>
+                <button class="annot-tool-btn" data-tool="rect" id="toolRect" title="矩形框" disabled>
+                    <i class="fas fa-square"></i>
+                </button>
+                <button class="annot-tool-btn" data-tool="text" id="toolText" title="文字批注（点击位置直接输入）" disabled>
+                    <i class="fas fa-font"></i>
+                </button>
+                <button class="annot-tool-btn" data-tool="select" id="toolSelect" title="选择标注（点击选中，拖动移动，拖拽控制点缩放）" disabled>
+                    <i class="fas fa-mouse-pointer"></i>
+                </button>
+                <div class="annot-divider"></div>
+                <div class="annot-color-wrap">
+                    <input type="color" id="annotColor" class="annot-color-input" value="#000000" title="选择颜色" disabled>
+                </div>
+                <div class="annot-divider"></div>
+                <div class="annot-fontsize-wrap" id="annotFontSizeWrap" style="display:none;">
+                    <i class="fas fa-text-height" style="color:#64748b;font-size:0.85rem;"></i>
+                    <input type="range" id="annotFontSize" min="8" max="72" value="16" step="1" title="文字大小">
+                    <span id="annotFontSizeLabel" style="font-size:0.75rem;color:#475569;min-width:22px;text-align:center;">16</span>
+                </div>
+                <div class="annot-divider"></div>
+                <button class="annot-tool-btn" id="toolUndo" title="撤销上一个" disabled>
+                    <i class="fas fa-undo"></i>
+                </button>
+                <button class="annot-tool-btn" id="toolDelete" title="删除选中的标注" disabled>
+                    <i class="fas fa-eraser"></i>
+                </button>
+                <button class="annot-tool-btn" id="toolClear" title="清空当前页" disabled>
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+                <div class="annot-divider"></div>
+                <button class="annot-tool-btn export-pdf-btn" id="exportPdfBtn" title="导出修改后的 PDF" disabled>
+                    <i class="fas fa-file-pdf"></i>
+                </button>
+                <span class="annot-hint" id="annotHint">
+                    <i class="fas fa-info-circle"></i>
+                    请先加载 PDF，再点上方工具
+                </span>
+            </div>
+
+            <div class="pdf-preview-wrapper" id="pdfPreviewWrapper">
+                <div class="pdf-scroll-area" id="pdfScrollArea">
+                    <div id="pdfPlaceholder" class="pdf-placeholder">
+                        <i class="fas fa-file-pdf placeholder-icon"></i>
+                        <p>选择或拖拽 PDF 文件到此处预览</p>
+                        <p style="font-size:0.8rem; color:#94a3b8;">支持翻页、缩放、截图与公式标注</p>
+                    </div>
+
+                    <div class="pdf-page-container" id="pdfPageContainer" style="display:none;">
+                        <canvas id="pdfCanvas"></canvas>
+                        <div class="textLayer" id="textLayer"></div>
+                        <div class="linkLayer" id="linkLayer"></div>
+                        <div class="annotation-layer" id="annotationLayer">
+                            <canvas id="annotationCanvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="selection-layer" id="selectionLayer">
+                    <div class="selection-box" id="selectionBox"></div>
+                </div>
+
+                <div class="zoom-float">
+                    <button id="zoomInBtn" title="放大" disabled>+</button>
+                    <button id="zoomOutBtn" title="缩小" disabled>−</button>
+                </div>
+            </div>
+
+            <div class="pdf-toolbar">
+                <label for="pdfUpload">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    选择文件
+                </label>
+                <input type="file" id="pdfUpload" accept=".pdf,application/pdf">
+                <button id="prevPageBtn" class="btn-copy" disabled title="上一页">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <span id="pageInfo" class="page-info">0 / 0</span>
+                <button id="nextPageBtn" class="btn-copy" disabled title="下一页">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+                <div class="page-jump">
+                    <input type="number" id="pageJumpInput" min="1" value="1" placeholder="页码" disabled>
+                    <button id="pageJumpBtn" class="btn-copy" disabled>跳转</button>
+                </div>
+                <button id="snipToggleBtn" class="snip-toggle-btn" disabled>
+                    <i class="fas fa-crop-alt"></i>
+                    截图
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="splitter hidden" id="splitter" title="拖拽调整面板宽度 · 双击折叠/展开">
+        <div class="splitter-handle"></div>
+    </div>
+
+    <!-- ==================== 右侧：标签页 ==================== -->
+    <div class="pane-right collapsed" id="paneRight">
+        <div class="pane-header">
+            <h2>
+                <i class="fas fa-bookmark" style="color:#3b82f6;"></i>
+                批注面板
+            </h2>
+            <div class="header-actions">
+                <button class="icon-btn" id="screenshotPageBtn" title="截取网页区域">
+                    <i class="fas fa-camera"></i>
+                </button>
+                <button class="icon-btn" id="collapsePanelBtn" title="折叠批注面板">
+                    <i class="fas fa-angles-right"></i>
+                </button>
+                <button class="icon-btn" id="exportDataBtn" title="导出全部记录为本地文件">
+                    <i class="fas fa-file-export"></i>
+                    <span class="export-dot" id="exportDot"></span>
+                </button>
+                <button class="icon-btn" id="importDataBtn" title="从本地文件导入记录">
+                    <i class="fas fa-file-import"></i>
+                </button>
+                <input type="file" id="importDataInput" accept="application/json,.json" style="display:none;">
+            </div>
+        </div>
+
+        <div class="right-tabs">
+            <button class="right-tab-btn active" data-rtab="snippetPanel">
+                <i class="fas fa-thumbtack"></i>
+                截图
+                <span class="status-badge" id="snippetCount">0</span>
+            </button>
+            <button class="right-tab-btn" data-rtab="imagePanel">
+                <i class="fas fa-image"></i>
+                图片
+                <span class="status-badge" id="imageCount">0</span>
+            </button>
+            <button class="right-tab-btn" data-rtab="formulaPanel">
+                <i class="fas fa-square-root-alt"></i>
+                公式
+                <span class="status-badge" id="formulaCount">0</span>
+            </button>
+            <button class="right-tab-btn" data-rtab="annotListPanel">
+                <i class="fas fa-list-ul"></i>
+                标注
+                <span class="status-badge" id="annotListCount">0</span>
+            </button>
+        </div>
+
+        <!-- 截图面板 -->
+        <div class="right-tab-panel active" id="snippetPanel">
+            <div class="pane-body">
+                <div class="flex-row" style="margin-bottom: 0.4rem; flex-shrink: 0;">
+                    <span class="formula-label" style="margin-bottom:0;">已钉截图</span>
+                    <button class="btn-copy" id="clearAllSnippetsBtn" style="font-size:0.72rem;" disabled>
+                        <i class="fas fa-trash-alt"></i> 清空
+                    </button>
+                </div>
+                <div class="snippet-board" id="snippetBoard">
+                    <div class="snippet-empty" id="snippetEmpty">
+                        <i class="fas fa-crop-alt"></i>
+                        <p>还没有截图</p>
+                        <p style="font-size:0.78rem; margin-top:0.4rem;">
+                            点击工具栏中的「截图」，<br>然后在 PDF 上拖拽选择区域。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 图片面板 -->
+        <div class="right-tab-panel" id="imagePanel">
+            <div class="pane-body">
+                <div class="flex-row" style="margin-bottom: 0.4rem; flex-shrink: 0;">
+                    <span class="formula-label" style="margin-bottom:0;">已上传图片</span>
+                    <div class="flex-row" style="gap:0.4rem;">
+                        <label for="imageUpload" class="btn-copy" style="font-size:0.72rem; cursor:pointer;">
+                            <i class="fas fa-upload"></i> 上传图片
+                        </label>
+                        <input type="file" id="imageUpload" accept="image/*" multiple style="display:none;">
+                        <button class="btn-copy" id="clearAllImagesBtn" style="font-size:0.72rem;" disabled>
+                            <i class="fas fa-trash-alt"></i> 清空
+                        </button>
+                    </div>
+                </div>
+                <div class="snippet-board" id="imageBoard">
+                    <div class="snippet-empty" id="imageEmpty">
+                        <i class="fas fa-image"></i>
+                        <p>还没有上传图片</p>
+                        <p style="font-size:0.78rem; margin-top:0.4rem;">
+                            点右上角「<b>📷 相机</b>」按钮框选网页区域，<br>
+                            或点「上传图片」，<br>
+                            也可以自己用 <b>Win + Shift + S</b> 截图后上传。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 公式面板 -->
+        <div class="right-tab-panel" id="formulaPanel">
+            <div class="pane-body">
+                <div class="formula-editor">
+
+                    <div>
+                        <div class="formula-label">输入公式</div>
+                        <div class="mathfield-wrapper" id="mathfieldWrapper">
+                            <div class="mathfield-inner">
+                                <math-field id="mathfield"></math-field>
+                            </div>
+                            <div class="mathfield-resize-handle" id="mathfieldResizeHandle" title="拖拽调整输入框高度"></div>
+                        </div>
+                    </div>
+
+                    <div class="formula-actions">
+                        <button class="formula-btn primary" id="saveFormulaBtn">
+                            <i class="fas fa-plus"></i> 保存公式
+                        </button>
+                        <button class="formula-btn" id="clearFormulaBtn">
+                            <i class="fas fa-eraser"></i> 清空
+                        </button>
+                        <button class="formula-btn" id="copyFormulaBtn">
+                            <i class="fas fa-copy"></i> 复制 LaTeX
+                        </button>
+                    </div>
+
+                    <div>
+                        <div class="formula-label">已保存公式</div>
+                        <div class="formula-list" id="formulaList">
+                            <div class="snippet-empty" id="formulaEmpty" style="padding:1.5rem;">
+                                <i class="fas fa-square-root-alt"></i>
+                                <p>还没有保存的公式</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 标注列表面板 ==================== -->
+        <div class="right-tab-panel" id="annotListPanel">
+            <div class="pane-body">
+                <div class="flex-row" style="margin-bottom: 0.4rem; flex-shrink: 0; gap:0.4rem;">
+                    <span class="formula-label" style="margin-bottom:0;">本页标注</span>
+                    <div class="flex-row" style="gap:0.4rem;">
+                        <button class="btn-copy" id="annotToggleAllBtn" style="font-size:0.72rem;" disabled>
+                            <i class="fas fa-eye-slash"></i> 全部隐藏
+                        </button>
+                        <button class="btn-copy" id="annotClearPageBtn" style="font-size:0.72rem;" disabled>
+                            <i class="fas fa-trash-alt"></i> 清空本页
+                        </button>
+                    </div>
+                </div>
+                <div class="annot-list" id="annotList">
+                    <div class="snippet-empty" id="annotListEmpty">
+                        <i class="fas fa-list-ul"></i>
+                        <p>本页还没有标注</p>
+                        <p style="font-size:0.78rem; margin-top:0.4rem;">
+                            用工具栏在 PDF 上画线、箭头、矩形、高亮、<br>
+                            文字或贴图后，会出现在这里。
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<button class="expand-float-btn show" id="expandFloatBtn" title="展开批注面板">
+    <i class="fas fa-angles-left"></i>
+    <span>批注面板</span>
+</button>
+
+<div class="snippet-modal" id="snippetModal">
+    <button class="snippet-modal-close" id="snippetModalClose">×</button>
+    <img id="snippetModalImg" src="" alt="预览">
+</div>
+
+<script src="script.core.js"></script>
+<script src="script.pdf.js"></script>
+<script src="script.panels.js"></script>
+<script src="annotation.js"></script>
+
+<script>
+// 全局初始化
+window.addEventListener('load', () => {
+    window.App.loadFromStorage();
+    window.App.initRightTabs();
+    window.App.initLayout();
+    window.App.initPdf();
+    window.App.initPanels();
+});
+</script>
+
+<!-- 页面专属微调脚本 -->
+<script>
+(function () {
+    'use strict';
+
+    // 1. 占位符居中
+    const pdfScrollArea = document.getElementById('pdfScrollArea');
+    const pdfPageContainer = document.getElementById('pdfPageContainer');
+    if (pdfScrollArea && pdfPageContainer) {
+        const obs = new MutationObserver(() => {
+            pdfScrollArea.classList.toggle('has-pdf', pdfPageContainer.style.display !== 'none');
+        });
+        obs.observe(pdfPageContainer, { attributes: true, attributeFilter: ['style'] });
+    }
+
+    // 2. 初始加载放大
+    const pdfUploadEl = document.getElementById('pdfUpload');
+    const zoomInBtnEl = document.getElementById('zoomInBtn');
+    const enlargeOnce = () => {
+        setTimeout(() => {
+            if (zoomInBtnEl && !zoomInBtnEl.disabled) {
+                zoomInBtnEl.click();
+                zoomInBtnEl.click();
+            }
+        }, 500);
+    };
+    if (pdfUploadEl) {
+        pdfUploadEl.addEventListener('change', (e) => {
+            const f = e.target.files && e.target.files[0];
+            if (f && f.type === 'application/pdf') enlargeOnce();
+        });
+    }
+    const pdfPreviewWrapperEl = document.getElementById('pdfPreviewWrapper');
+    if (pdfPreviewWrapperEl) {
+        pdfPreviewWrapperEl.addEventListener('drop', (e) => {
+            const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+            if (f && f.type === 'application/pdf') enlargeOnce();
+        });
+    }
+
+    // 3. 公式输入框高度拖拽
+    const wrapper = document.getElementById('mathfieldWrapper');
+    const handle = document.getElementById('mathfieldResizeHandle');
+    const KEY = 'pdf_annotator_mathfield_height_v1';
+    if (wrapper && handle) {
+        const MIN_H = 120, MAX_H = 600;
+        try {
+            const h = parseInt(localStorage.getItem(KEY), 10);
+            if (!isNaN(h) && h >= MIN_H && h <= MAX_H) wrapper.style.height = h + 'px';
+        } catch (e) {}
+        let sy = 0, sh = 0, dragging = false;
+        const onDown = (e) => {
+            dragging = true;
+            handle.classList.add('dragging');
+            document.body.classList.add('mf-resizing');
+            sy = e.clientY;
+            sh = wrapper.offsetHeight;
+            try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+            e.preventDefault();
+        };
+        const onMove = (e) => {
+            if (!dragging) return;
+            let nh = sh + (e.clientY - sy);
+            nh = Math.max(MIN_H, Math.min(MAX_H, nh));
+            wrapper.style.height = nh + 'px';
+        };
+        const onUp = (e) => {
+            if (!dragging) return;
+            dragging = false;
+            handle.classList.remove('dragging');
+            document.body.classList.remove('mf-resizing');
+            try { handle.releasePointerCapture(e.pointerId); } catch (err) {}
+            try { localStorage.setItem(KEY, String(wrapper.offsetHeight)); } catch (e) {}
+        };
+        handle.addEventListener('pointerdown', onDown);
+        handle.addEventListener('pointermove', onMove);
+        handle.addEventListener('pointerup', onUp);
+        handle.addEventListener('pointercancel', onUp);
+        handle.addEventListener('dblclick', () => {
+            wrapper.style.height = '200px';
+            try { localStorage.setItem(KEY, '200'); } catch (e) {}
+        });
+    }
+
+    // 4. 工具启用
+    const annotHint = document.getElementById('annotHint');
+    const toolButtons = document.querySelectorAll('.annot-tool-btn[data-tool]');
+    const toolUndo = document.getElementById('toolUndo');
+    const toolDelete = document.getElementById('toolDelete');
+    const toolClear = document.getElementById('toolClear');
+    const annotColor = document.getElementById('annotColor');
+    const exportPdfBtn = document.getElementById('exportPdfBtn');
+
+    let _toolsEnabled = false;
+
+    function setToolsEnabled(enabled) {
+        if (_toolsEnabled === enabled) return;
+        _toolsEnabled = enabled;
+        toolButtons.forEach(btn => { btn.disabled = !enabled; });
+        if (toolUndo) toolUndo.disabled = !enabled;
+        if (toolDelete) toolDelete.disabled = !enabled;
+        if (toolClear) toolClear.disabled = !enabled;
+        if (annotColor) annotColor.disabled = !enabled;
+        if (exportPdfBtn) exportPdfBtn.disabled = !enabled;
+        if (annotHint) {
+            if (enabled) {
+                annotHint.classList.add('ready');
+                annotHint.classList.remove('active');
+                annotHint.innerHTML = '<i class="fas fa-check-circle"></i> PDF 已加载，点上方工具即可在页面上标注';
+            } else {
+                annotHint.classList.remove('ready', 'active');
+                annotHint.innerHTML = '<i class="fas fa-info-circle"></i> 请先加载 PDF，再点上方工具';
+            }
+        }
+        window.dispatchEvent(new CustomEvent('pdf-tools-enabled', { detail: { enabled } }));
+    }
+
+    setToolsEnabled(false);
+
+    if (pdfPageContainer) {
+        const obs2 = new MutationObserver(() => {
+            const v = pdfPageContainer.style.display;
+            const visible = v !== 'none' && v !== '';
+            setToolsEnabled(visible);
+        });
+        obs2.observe(pdfPageContainer, { attributes: true, attributeFilter: ['style'] });
+    }
+
+    let checkCount = 0;
+    const checkTimer = setInterval(() => {
+        checkCount++;
+        const v = pdfPageContainer ? pdfPageContainer.style.display : 'none';
+        const visible = v !== 'none' && v !== '';
+        if (visible) {
+            setToolsEnabled(true);
+            clearInterval(checkTimer);
+        } else if (checkCount > 60) {
+            clearInterval(checkTimer);
+        }
+    }, 500);
+
+    // 5. 导出到「当前文件夹」
+    const exportBtn = document.getElementById('exportDataBtn');
+    const exportDot = document.getElementById('exportDot');
+    const IDB_NAME = 'pdf_annotator_fs';
+    const IDB_STORE = 'handles';
+    const IDB_KEY = 'exportDir';
+
+    function openIDB() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(IDB_NAME, 1);
+            req.onupgradeneeded = () => {
+                const db = req.result;
+                if (!db.objectStoreNames.contains(IDB_STORE)) {
+                    db.createObjectStore(IDB_STORE);
+                }
+            };
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+    async function idbGet(key) {
+        try {
+            const db = await openIDB();
+            return await new Promise((resolve, reject) => {
+                const tx = db.transaction(IDB_STORE, 'readonly');
+                const req = tx.objectStore(IDB_STORE).get(key);
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => reject(req.error);
+            });
+        } catch (e) { return null; }
+    }
+    async function idbSet(key, value) {
+        try {
+            const db = await openIDB();
+            return await new Promise((resolve, reject) => {
+                const tx = db.transaction(IDB_STORE, 'readwrite');
+                const req = tx.objectStore(IDB_STORE).put(value, key);
+                req.onsuccess = () => resolve(true);
+                req.onerror = () => reject(req.error);
+            });
+        } catch (e) { return false; }
+    }
+    function buildExportData() {
+        const STORAGE_KEY = 'pdf_annotator_data_v1';
+        let snippets = [], images = [], formulas = [], annotations = {};
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                const data = JSON.parse(raw);
+                if (Array.isArray(data.snippets)) snippets = data.snippets;
+                if (Array.isArray(data.images)) images = data.images;
+                if (Array.isArray(data.formulas)) formulas = data.formulas;
+            }
+            const rawA = localStorage.getItem('pdf_annotator_annotations_v1');
+            if (rawA) annotations = JSON.parse(rawA) || {};
+        } catch (e) {}
+        return { version: 1, exportedAt: new Date().toISOString(), snippets, images, formulas, annotations };
+    }
+    function makeFilename() {
+        const ts = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        return `pdf-annotations-${ts.getFullYear()}${pad(ts.getMonth()+1)}${pad(ts.getDate())}-${pad(ts.getHours())}${pad(ts.getMinutes())}${pad(ts.getSeconds())}.json`;
+    }
+    function fallbackDownload(data) {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = makeFilename();
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+    async function getOrPickDirectory() {
+        let dirHandle = await idbGet(IDB_KEY);
+        if (dirHandle) {
+            try {
+                const perm = await dirHandle.queryPermission({ mode: 'readwrite' });
+                if (perm === 'granted') return dirHandle;
+                const req = await dirHandle.requestPermission({ mode: 'readwrite' });
+                if (req === 'granted') return dirHandle;
+            } catch (e) {}
+        }
+        try { dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' }); } catch (e) { return null; }
+        await idbSet(IDB_KEY, dirHandle);
+        return dirHandle;
+    }
+    async function saveToDirectory(dirHandle, filename, data) {
+        const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(JSON.stringify(data, null, 2));
+        await writable.close();
+    }
+    if (exportBtn) {
+        exportBtn.addEventListener('click', async (e) => {
+            const supportsFS = typeof window.showDirectoryPicker === 'function';
+            if (!supportsFS) return;
+            e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+            const data = buildExportData();
+            const filename = makeFilename();
+            try {
+                const dirHandle = await getOrPickDirectory();
+                if (!dirHandle) return;
+                await saveToDirectory(dirHandle, filename, data);
+                if (exportDot) {
+                    exportDot.classList.add('show');
+                    setTimeout(() => exportDot.classList.remove('show'), 1500);
+                }
+                const original = exportBtn.innerHTML;
+                exportBtn.innerHTML = '<i class="fas fa-check"></i><span class="export-dot show"></span>';
+                setTimeout(() => { exportBtn.innerHTML = original; }, 1200);
+            } catch (err) {
+                console.error('保存到目录失败：', err);
+                fallbackDownload(data);
+            }
+        }, true);
+    }
+})();
+</script>
+</body>
+</html>
