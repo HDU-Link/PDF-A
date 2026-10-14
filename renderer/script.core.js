@@ -256,12 +256,12 @@
     };
 
     // ===== 右侧标签切换 =====
+    // ★ 已合并为三个标签：mediaPanel / formulaPanel / annotListPanel
     App.switchRightTab = function (tabId) {
         const rightTabBtns = document.querySelectorAll('.right-tab-btn');
         const panels = {
-            snippetPanel: App.$('snippetPanel'),
-            imagePanel: App.$('imagePanel'),
-            formulaPanel: App.$('formulaPanel'),
+            mediaPanel:     App.$('mediaPanel'),
+            formulaPanel:   App.$('formulaPanel'),
             annotListPanel: App.$('annotListPanel')
         };
         if (App.state.isCollapsed) App.setCollapsed(false);
@@ -279,9 +279,8 @@
     App.initRightTabs = function () {
         const rightTabBtns = document.querySelectorAll('.right-tab-btn');
         const panels = {
-            snippetPanel: App.$('snippetPanel'),
-            imagePanel: App.$('imagePanel'),
-            formulaPanel: App.$('formulaPanel'),
+            mediaPanel:     App.$('mediaPanel'),
+            formulaPanel:   App.$('formulaPanel'),
             annotListPanel: App.$('annotListPanel')
         };
         rightTabBtns.forEach(btn => {

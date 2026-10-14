@@ -43,7 +43,7 @@ body {
     display: flex;
     flex-direction: column;
     background: white;
-    border-radius: 1.5rem;
+    border-radius: 1rem;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     overflow: hidden;
     transition: border-radius 0.2s;
@@ -55,7 +55,7 @@ body {
     display: flex;
     flex-direction: column;
     background: white;
-    border-radius: 1.5rem;
+    border-radius: 1rem;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     overflow: hidden;
     position: relative;
@@ -93,10 +93,14 @@ body {
 .pane-body {
     flex: 1;
     min-height: 0;
-    padding: 0 1.2rem 1.2rem;
+    padding: 0 0rem 0.2rem;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+}
+
+.pane-right .pane-body {
+    padding: 1rem 1.2rem 1rem;
 }
 
 /* ===== 通用按钮 ===== */
@@ -146,43 +150,318 @@ body {
     gap: 0.35rem;
 }
 
-.open-panel-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.4rem 0.9rem;
-    border-radius: 40px;
-    background: #3b82f6;
-    color: white;
-    border: none;
-    font-size: 0.8rem;
+/* ===== 左侧 PDF 预览区 ===== */
+.pdf-preview-wrapper {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    border-radius: 0;
+    background: #f1f5f9;
+    margin-top: 0;
+    margin-bottom: 0.2rem;
+}
+
+.pdf-preview-wrapper.hover-dim::after {
+    content: '点击选择 PDF 文件';
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    color: #ffffff;
+    font-size: 1.1rem;
     font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
-    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 1px;
+    border-radius: 0;
+    z-index: 20;
+    pointer-events: none;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    animation: hoverDimFadeIn 0.15s ease;
+}
+
+@keyframes hoverDimFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.pdf-scroll-area {
+    position: absolute;
+    inset: 0;
+    overflow: auto;
+    padding: 0.8rem;
+    border-radius: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+.pdf-scroll-area.has-pdf {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+.pdf-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    color: #64748b;
+    text-align: center;
+    font-size: 1rem;
+    margin: auto;
+}
+
+.pdf-placeholder .placeholder-icon {
+    font-size: 3.4rem;
+    color: #dc2626;
+    margin-bottom: 1rem;
+    line-height: 1;
+}
+
+.pdf-page-container {
+    position: relative;
+    display: inline-block;
+    margin: auto;
+    line-height: 0;
+}
+
+.pdf-page-container #pdfCanvas {
+    display: block;
+    background: white;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border-radius: 0;
+    max-width: none;
+    max-height: none;
     width: auto;
     height: auto;
 }
 
-.open-panel-btn:hover { background: #2563eb; }
-.open-panel-btn i { font-size: 0.85rem; }
+.textLayer {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+    overflow: hidden;
+    line-height: 1;
+    z-index: 2;
+    pointer-events: auto;
+}
 
-/* ===== 标注工具栏 ===== */
+.textLayer > span,
+.textLayer > br {
+    color: transparent;
+    position: absolute;
+    white-space: pre;
+    cursor: text;
+    transform-origin: 0% 0%;
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+.textLayer ::selection {
+    background: rgba(59, 130, 246, 0.35);
+}
+
+.linkLayer {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+    overflow: hidden;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.linkLayer a {
+    position: absolute;
+    display: block;
+    pointer-events: auto;
+    background: transparent;
+    border-radius: 2px;
+    transition: background 0.15s;
+}
+
+.linkLayer a:hover {
+    background: rgba(59, 130, 246, 0.18);
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5);
+}
+
+.annotation-layer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    z-index: 4;
+    pointer-events: none;
+}
+
+.annotation-layer.active {
+    pointer-events: auto;
+    cursor: crosshair;
+}
+
+.annotation-layer canvas { display: block; }
+
+.selection-layer {
+    position: absolute;
+    left: 0; top: 0; right: 0; bottom: 0;
+    z-index: 5;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.pdf-preview-wrapper.snip-mode .selection-layer {
+    pointer-events: auto;
+    cursor: crosshair;
+}
+
+.selection-box {
+    position: absolute;
+    border: 2px dashed #3b82f6;
+    background: rgba(59, 130, 246, 0.15);
+    pointer-events: none;
+    display: none;
+    z-index: 6;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.6) inset;
+}
+
+.pdf-preview-wrapper.snip-mode .textLayer,
+.pdf-preview-wrapper.snip-mode .linkLayer,
+.pdf-preview-wrapper.snip-mode .annotation-layer {
+    pointer-events: none !important;
+}
+
+/* ===== 缩放悬浮按钮 ===== */
+.zoom-float {
+    position: absolute;
+    right: 1.2rem;
+    bottom: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    z-index: 10;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+.pdf-preview-wrapper:hover .zoom-float {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.pdf-preview-wrapper.snip-mode .zoom-float {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.zoom-float button {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: #3b82f6;
+    color: white;
+    font-size: 1.3rem;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    transition: background 0.15s, transform 0.1s;
+    padding: 0;
+}
+
+.zoom-float button:hover:not(:disabled) {
+    background: #2563eb;
+    transform: scale(1.05);
+}
+.zoom-float button:active:not(:disabled) { transform: scale(0.95); }
+.zoom-float button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* ===== 标注工具栏：左下角，向右展开 ===== */
+.annot-dock {
+    position: absolute;
+    left: 0.8rem;
+    bottom: 0.8rem;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    pointer-events: none;
+}
+
+.annot-dock > * {
+    pointer-events: auto;
+}
+
+.annot-dock-toggle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: #3b82f6;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    transition: background 0.15s, transform 0.15s;
+    flex-shrink: 0;
+}
+.annot-dock-toggle:hover {
+    background: #2563eb;
+    transform: scale(1.05);
+}
+
+.annot-dock-body {
+    max-width: 0;
+    overflow: hidden;
+    transition: max-width 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.22s ease;
+    opacity: 0;
+    border-radius: 40px;
+}
+.annot-dock.open .annot-dock-body {
+    max-width: 900px;
+    opacity: 1;
+}
+
+.annot-dock-body .annot-toolbar {
+    margin-bottom: 0;
+    background: rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    white-space: nowrap;
+    flex-wrap: nowrap;
+    padding: 0.4rem 0.7rem;
+    border-radius: 40px;
+    overflow: hidden;
+}
+
+/* ===== 标注工具栏（通用样式，dock 内也复用） ===== */
 .annot-toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 0.4rem;
     padding: 0.5rem 0.8rem;
-    border-radius: 50px;
-    margin-bottom: 0.6rem;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    margin-bottom: 0;
     flex-shrink: 0;
 }
 
 .annot-tool-btn {
-    background: white;
+    background: rgba(255, 255, 255, 0.6);
     border: 1px solid #cbd5e1;
     color: #334155;
     width: 36px;
@@ -281,20 +560,37 @@ body {
 }
 .export-pdf-btn:hover:not(:disabled) { background: #15803d !important; }
 
-/* ===== 工具栏（底部） ===== */
+/* ===== 翻页工具栏：PDF 正下方居中 ===== */
 .pdf-toolbar {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    justify-content: center;
     gap: 0.6rem;
-    padding: 0.6rem 1rem;
-    border-radius: 50px;
-    font-size: 0.9rem;
+    padding: 0.5rem 0.5rem;
+    border-radius: 0;
+    font-size: 0.8rem;
     flex-shrink: 0;
-    margin-bottom: 0.8rem;
+    margin: 0 auto;
 }
 
 .pdf-toolbar input[type="file"] { display: none; }
+
+.pdf-upload-btn {
+    background: #3b82f6;
+    color: white;
+    padding: 0.45rem 1.1rem;
+    border-radius: 40px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+.pdf-upload-btn:hover { background: #2563eb; }
 
 .pdf-toolbar label {
     background: #3b82f6;
@@ -304,13 +600,12 @@ body {
     font-weight: 500;
     cursor: pointer;
     transition: background 0.15s;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     display: inline-flex;
     align-items: center;
     gap: 0.6rem;
     box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
 }
-
 .pdf-toolbar label:hover { background: #2563eb; }
 
 .page-info {
@@ -355,236 +650,6 @@ body {
 .page-jump .btn-copy {
     padding: 0.35rem 0.8rem;
     font-size: 0.8rem;
-}
-
-/* ===== 左侧 PDF 预览区 ===== */
-.pdf-preview-wrapper {
-    position: relative;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-    border-radius: 1rem;
-    background: #f1f5f9;
-}
-
-.pdf-preview-wrapper.hover-dim::after {
-    content: '点击选择 PDF 文件';
-    position: absolute;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.35);
-    color: #ffffff;
-    font-size: 1.1rem;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    letter-spacing: 1px;
-    border-radius: 1rem;
-    z-index: 20;
-    pointer-events: none;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-    animation: hoverDimFadeIn 0.15s ease;
-}
-
-@keyframes hoverDimFadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-}
-
-.pdf-scroll-area {
-    position: absolute;
-    inset: 0;
-    overflow: auto;
-    padding: 0.8rem;
-    border-radius: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.pdf-scroll-area.has-pdf {
-    display: block;
-}
-
-.pdf-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem;
-    color: #64748b;
-    text-align: center;
-    font-size: 1rem;
-    margin: auto;
-}
-
-.pdf-placeholder .placeholder-icon {
-    font-size: 3.4rem;
-    color: #dc2626;
-    margin-bottom: 1rem;
-    line-height: 1;
-}
-
-.pdf-page-container {
-    position: relative;
-    display: inline-block;
-    margin: 0 auto;
-    line-height: 0;
-}
-
-.pdf-page-container #pdfCanvas {
-    display: block;
-    background: white;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    max-width: none;
-    max-height: none;
-    width: auto;
-    height: auto;
-}
-
-.textLayer {
-    position: absolute;
-    left: 0; top: 0; right: 0; bottom: 0;
-    overflow: hidden;
-    line-height: 1;
-    z-index: 2;
-    pointer-events: auto;
-}
-
-.textLayer > span,
-.textLayer > br {
-    color: transparent;
-    position: absolute;
-    white-space: pre;
-    cursor: text;
-    transform-origin: 0% 0%;
-    -webkit-user-select: text;
-    user-select: text;
-}
-
-.textLayer ::selection {
-    background: rgba(59, 130, 246, 0.35);
-}
-
-.linkLayer {
-    position: absolute;
-    left: 0; top: 0; right: 0; bottom: 0;
-    overflow: hidden;
-    z-index: 3;
-    pointer-events: none;
-}
-
-.linkLayer a {
-    position: absolute;
-    display: block;
-    pointer-events: auto;
-    background: transparent;
-    border-radius: 2px;
-    transition: background 0.15s;
-}
-
-.linkLayer a:hover {
-    background: rgba(59, 130, 246, 0.18);
-    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.5);
-}
-
-.annotation-layer {
-    position: absolute;
-    left: 0;
-    top: 0;
-    z-index: 4;
-    pointer-events: none;
-}
-
-.annotation-layer.active {
-    pointer-events: auto;
-    cursor: crosshair;
-}
-
-.annotation-layer canvas { display: block; }
-
-.selection-layer {
-    position: absolute;
-    left: 0; top: 0; right: 0; bottom: 0;
-    z-index: 5;
-    pointer-events: none;
-    overflow: hidden;
-}
-
-.pdf-preview-wrapper.snip-mode .selection-layer {
-    pointer-events: auto;
-    cursor: crosshair;
-}
-
-.selection-box {
-    position: absolute;
-    border: 2px dashed #3b82f6;
-    background: rgba(59, 130, 246, 0.15);
-    pointer-events: none;
-    display: none;
-    z-index: 6;
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.6) inset;
-}
-
-.pdf-preview-wrapper.snip-mode .textLayer,
-.pdf-preview-wrapper.snip-mode .linkLayer,
-.pdf-preview-wrapper.snip-mode .annotation-layer {
-    pointer-events: none !important;
-}
-
-.zoom-float {
-    position: absolute;
-    right: 1.2rem;
-    bottom: 1.2rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-    z-index: 10;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s ease;
-}
-
-.pdf-preview-wrapper:hover .zoom-float {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-.pdf-preview-wrapper.snip-mode .zoom-float {
-    opacity: 0;
-    pointer-events: none;
-}
-
-.zoom-float button {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: none;
-    background: #3b82f6;
-    color: white;
-    font-size: 1.3rem;
-    font-weight: 600;
-    line-height: 1;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-    transition: background 0.15s, transform 0.1s;
-    padding: 0;
-}
-
-.zoom-float button:hover:not(:disabled) {
-    background: #2563eb;
-    transform: scale(1.05);
-}
-.zoom-float button:active:not(:disabled) { transform: scale(0.95); }
-.zoom-float button:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-    box-shadow: none;
 }
 
 .snip-toggle-btn {
@@ -773,7 +838,7 @@ body {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    padding: 1rem 0.2rem 1rem;
+    padding: 0.5rem 0.2rem 1rem;
     display: flex;
     flex-direction: column;
     gap: 0.9rem;
@@ -1205,7 +1270,7 @@ body.resizing * {
 .link-hover-preview {
     position: fixed;
     z-index: 9999;
-    width: 460px;             /* 改宽一点，因为显示横向长条 */
+    width: 460px;
     max-height: 260px;
     background: white;
     border: 1px solid #cbd5e1;

@@ -5,26 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF-A</title>
 
-    <!-- MathLive（本地） -->
     <script src="mathlive/mathlive.min.js"></script>
-
-    <!-- PDF.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-
-    <!-- pdf-lib -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
-
-    <!-- html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-
-    <!-- 自定义样式 -->
     <link rel="stylesheet" href="styles.css">
 </head>
 
-<!-- 链接悬浮预览 -->
 <div class="link-hover-preview" id="linkHoverPreview">
     <div class="link-hover-header" id="linkHoverHeader">跳转到第 1 页</div>
     <div class="link-hover-body">
@@ -38,70 +26,7 @@
 
     <!-- ==================== 左侧：PDF ==================== -->
     <div class="pane-left" id="paneLeft">
-        <div class="pane-header">
-            <h2>
-                <i class="fas fa-file-pdf" style="color:#dc2626;"></i>
-                PDF 预览
-            </h2>
-            <button class="icon-btn open-panel-btn" id="openPanelBtn" title="展开批注面板">
-                <i class="fas fa-angles-left"></i>
-                <span>批注</span>
-            </button>
-        </div>
-
         <div class="pane-body">
-
-            <div class="annot-toolbar" id="annotToolbar">
-                <button class="annot-tool-btn" data-tool="pen" id="toolPen" title="自由画笔" disabled>
-                    <i class="fas fa-pen"></i>
-                </button>
-                <button class="annot-tool-btn" data-tool="line" id="toolLine" title="直线" disabled>
-                    <i class="fas fa-slash"></i>
-                </button>
-                <button class="annot-tool-btn" data-tool="arrow" id="toolArrow" title="箭头" disabled>
-                    <i class="fas fa-arrow-right"></i>
-                </button>
-                <button class="annot-tool-btn" data-tool="highlight" id="toolHighlight" title="高亮" disabled>
-                    <i class="fas fa-highlighter"></i>
-                </button>
-                <button class="annot-tool-btn" data-tool="rect" id="toolRect" title="矩形框" disabled>
-                    <i class="fas fa-square"></i>
-                </button>
-                <button class="annot-tool-btn" data-tool="text" id="toolText" title="文字批注（点击位置直接输入）" disabled>
-                    <i class="fas fa-font"></i>
-                </button>
-                <button class="annot-tool-btn" data-tool="select" id="toolSelect" title="选择标注（点击选中，拖动移动，拖拽控制点缩放）" disabled>
-                    <i class="fas fa-mouse-pointer"></i>
-                </button>
-                <div class="annot-divider"></div>
-                <div class="annot-color-wrap">
-                    <input type="color" id="annotColor" class="annot-color-input" value="#000000" title="选择颜色" disabled>
-                </div>
-                <div class="annot-divider"></div>
-                <div class="annot-fontsize-wrap" id="annotFontSizeWrap" style="display:none;">
-                    <i class="fas fa-text-height" style="color:#64748b;font-size:0.85rem;"></i>
-                    <input type="range" id="annotFontSize" min="8" max="72" value="16" step="1" title="文字大小">
-                    <span id="annotFontSizeLabel" style="font-size:0.75rem;color:#475569;min-width:22px;text-align:center;">16</span>
-                </div>
-                <div class="annot-divider"></div>
-                <button class="annot-tool-btn" id="toolUndo" title="撤销上一个" disabled>
-                    <i class="fas fa-undo"></i>
-                </button>
-                <button class="annot-tool-btn" id="toolDelete" title="删除选中的标注" disabled>
-                    <i class="fas fa-eraser"></i>
-                </button>
-                <button class="annot-tool-btn" id="toolClear" title="清空当前页" disabled>
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-                <div class="annot-divider"></div>
-                <button class="annot-tool-btn export-pdf-btn" id="exportPdfBtn" title="导出修改后的 PDF" disabled>
-                    <i class="fas fa-file-pdf"></i>
-                </button>
-                <span class="annot-hint" id="annotHint">
-                    <i class="fas fa-info-circle"></i>
-                    请先加载 PDF，再点上方工具
-                </span>
-            </div>
 
             <div class="pdf-preview-wrapper" id="pdfPreviewWrapper">
                 <div class="pdf-scroll-area" id="pdfScrollArea">
@@ -129,10 +54,66 @@
                     <button id="zoomInBtn" title="放大" disabled>+</button>
                     <button id="zoomOutBtn" title="缩小" disabled>−</button>
                 </div>
+
+                <div class="annot-dock" id="annotDock">
+                    <button class="annot-dock-toggle" id="annotDockToggle" title="展开/收起标注工具">
+                        <i class="fas fa-toolbox"></i>
+                    </button>
+                    <div class="annot-dock-body" id="annotDockBody">
+                        <div class="annot-toolbar" id="annotToolbar">
+                            <button class="annot-tool-btn" data-tool="pen" id="toolPen" title="自由画笔" disabled>
+                                <i class="fas fa-pen"></i>
+                            </button>
+                            <button class="annot-tool-btn" data-tool="line" id="toolLine" title="直线" disabled>
+                                <i class="fas fa-slash"></i>
+                            </button>
+                            <button class="annot-tool-btn" data-tool="arrow" id="toolArrow" title="箭头" disabled>
+                                <i class="fas fa-arrow-right"></i>
+                            </button>
+                            <button class="annot-tool-btn" data-tool="highlight" id="toolHighlight" title="高亮" disabled>
+                                <i class="fas fa-highlighter"></i>
+                            </button>
+                            <button class="annot-tool-btn" data-tool="rect" id="toolRect" title="矩形框" disabled>
+                                <i class="fas fa-square"></i>
+                            </button>
+                            <button class="annot-tool-btn" data-tool="text" id="toolText" title="文字批注" disabled>
+                                <i class="fas fa-font"></i>
+                            </button>
+                            <button class="annot-tool-btn" data-tool="select" id="toolSelect" title="选择标注" disabled>
+                                <i class="fas fa-mouse-pointer"></i>
+                            </button>
+                            <div class="annot-divider"></div>
+                            <div class="annot-color-wrap">
+                                <input type="color" id="annotColor" class="annot-color-input" value="#000000" title="选择颜色" disabled>
+                            </div>
+                            <div class="annot-divider"></div>
+                            <div class="annot-fontsize-wrap" id="annotFontSizeWrap" style="display:none;">
+                                <i class="fas fa-text-height" style="color:#64748b;font-size:0.85rem;"></i>
+                                <input type="range" id="annotFontSize" min="8" max="72" value="16" step="1" title="文字大小">
+                                <span id="annotFontSizeLabel" style="font-size:0.75rem;color:#475569;min-width:22px;text-align:center;">16</span>
+                            </div>
+                            <div class="annot-divider"></div>
+                            <button class="annot-tool-btn" id="toolUndo" title="撤销上一个" disabled>
+                                <i class="fas fa-undo"></i>
+                            </button>
+                            <button class="annot-tool-btn" id="toolDelete" title="删除选中的标注" disabled>
+                                <i class="fas fa-eraser"></i>
+                            </button>
+                            <button class="annot-tool-btn" id="toolClear" title="清空当前页" disabled>
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                            <div class="annot-divider"></div>
+                            <button class="annot-tool-btn export-pdf-btn" id="exportPdfBtn" title="导出修改后的 PDF" disabled>
+                                <i class="fas fa-file-pdf"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="pdf-toolbar">
-                <label for="pdfUpload">
+            <div class="pdf-toolbar" id="pdfToolbar">
+                <input type="file" id="pdfUpload" accept=".pdf,application/pdf">
+                <label for="pdfUpload" class="pdf-upload-btn">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                         <polyline points="17 8 12 3 7 8"/>
@@ -140,7 +121,6 @@
                     </svg>
                     选择文件
                 </label>
-                <input type="file" id="pdfUpload" accept=".pdf,application/pdf">
                 <button id="prevPageBtn" class="btn-copy" disabled title="上一页">
                     <i class="fas fa-chevron-left"></i>
                 </button>
@@ -190,16 +170,12 @@
             </div>
         </div>
 
+        <!-- ★ 三个标签：素材 / 公式 / 标注 -->
         <div class="right-tabs">
-            <button class="right-tab-btn active" data-rtab="snippetPanel">
-                <i class="fas fa-thumbtack"></i>
-                截图
-                <span class="status-badge" id="snippetCount">0</span>
-            </button>
-            <button class="right-tab-btn" data-rtab="imagePanel">
-                <i class="fas fa-image"></i>
-                图片
-                <span class="status-badge" id="imageCount">0</span>
+            <button class="right-tab-btn active" data-rtab="mediaPanel">
+                <i class="fas fa-images"></i>
+                素材
+                <span class="status-badge" id="mediaCount">0</span>
             </button>
             <button class="right-tab-btn" data-rtab="formulaPanel">
                 <i class="fas fa-square-root-alt"></i>
@@ -213,50 +189,29 @@
             </button>
         </div>
 
-        <!-- 截图面板 -->
-        <div class="right-tab-panel active" id="snippetPanel">
+        <!-- ★ 素材面板（截图 + 图片 合并） -->
+        <div class="right-tab-panel active" id="mediaPanel">
             <div class="pane-body">
-                <div class="flex-row" style="margin-bottom: 0.4rem; flex-shrink: 0;">
-                    <span class="formula-label" style="margin-bottom:0;">已钉截图</span>
-                    <button class="btn-copy" id="clearAllSnippetsBtn" style="font-size:0.72rem;" disabled>
-                        <i class="fas fa-trash-alt"></i> 清空
-                    </button>
-                </div>
-                <div class="snippet-board" id="snippetBoard">
-                    <div class="snippet-empty" id="snippetEmpty">
-                        <i class="fas fa-crop-alt"></i>
-                        <p>还没有截图</p>
-                        <p style="font-size:0.78rem; margin-top:0.4rem;">
-                            点击工具栏中的「截图」，<br>然后在 PDF 上拖拽选择区域。
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 图片面板 -->
-        <div class="right-tab-panel" id="imagePanel">
-            <div class="pane-body">
-                <div class="flex-row" style="margin-bottom: 0.4rem; flex-shrink: 0;">
-                    <span class="formula-label" style="margin-bottom:0;">已上传图片</span>
+                <div class="flex-row" style="margin-bottom: 0.6rem; flex-shrink: 0;">
+                    <span class="formula-label" style="margin-bottom:0;">已保存素材</span>
                     <div class="flex-row" style="gap:0.4rem;">
                         <label for="imageUpload" class="btn-copy" style="font-size:0.72rem; cursor:pointer;">
                             <i class="fas fa-upload"></i> 上传图片
                         </label>
                         <input type="file" id="imageUpload" accept="image/*" multiple style="display:none;">
-                        <button class="btn-copy" id="clearAllImagesBtn" style="font-size:0.72rem;" disabled>
+                        <button class="btn-copy" id="clearAllMediaBtn" style="font-size:0.72rem;" disabled>
                             <i class="fas fa-trash-alt"></i> 清空
                         </button>
                     </div>
                 </div>
-                <div class="snippet-board" id="imageBoard">
-                    <div class="snippet-empty" id="imageEmpty">
-                        <i class="fas fa-image"></i>
-                        <p>还没有上传图片</p>
+                <div class="snippet-board" id="mediaBoard">
+                    <div class="snippet-empty" id="mediaEmpty">
+                        <i class="fas fa-images"></i>
+                        <p>还没有素材</p>
                         <p style="font-size:0.78rem; margin-top:0.4rem;">
-                            点右上角「<b>📷 相机</b>」按钮框选网页区域，<br>
+                            用工具栏「截图」在 PDF 上框选，<br>
                             或点「上传图片」，<br>
-                            也可以自己用 <b>Win + Shift + S</b> 截图后上传。
+                            也可用 <b>Win + Shift + S</b> 截图后上传。
                         </p>
                     </div>
                 </div>
@@ -267,9 +222,10 @@
         <div class="right-tab-panel" id="formulaPanel">
             <div class="pane-body">
                 <div class="formula-editor">
-
                     <div>
-                        <div class="formula-label">输入公式</div>
+                        <div class="formula-label">
+                            输入公式（Shift + Enter 换行）
+                        </div>
                         <div class="mathfield-wrapper" id="mathfieldWrapper">
                             <div class="mathfield-inner">
                                 <math-field id="mathfield"></math-field>
@@ -303,7 +259,7 @@
             </div>
         </div>
 
-        <!-- ==================== 标注列表面板 ==================== -->
+        <!-- 标注面板 -->
         <div class="right-tab-panel" id="annotListPanel">
             <div class="pane-body">
                 <div class="flex-row" style="margin-bottom: 0.4rem; flex-shrink: 0; gap:0.4rem;">
@@ -335,7 +291,6 @@
 
 <button class="expand-float-btn show" id="expandFloatBtn" title="展开批注面板">
     <i class="fas fa-angles-left"></i>
-    <span>批注面板</span>
 </button>
 
 <div class="snippet-modal" id="snippetModal">
@@ -349,7 +304,6 @@
 <script src="annotation.js"></script>
 
 <script>
-// 全局初始化
 window.addEventListener('load', () => {
     window.App.loadFromStorage();
     window.App.initRightTabs();
@@ -359,7 +313,6 @@ window.addEventListener('load', () => {
 });
 </script>
 
-<!-- 页面专属微调脚本 -->
 <script>
 (function () {
     'use strict';
@@ -500,7 +453,32 @@ window.addEventListener('load', () => {
         }
     }, 500);
 
-    // 5. 导出到「当前文件夹」
+    // 5. 标注工具栏：左下角，向右展开/向左收回
+    const annotDock = document.getElementById('annotDock');
+    const annotDockToggle = document.getElementById('annotDockToggle');
+    const ANNOT_DOCK_KEY = 'pdf_annotator_annot_dock_open';
+
+    let dockOpen = false;
+    try {
+        const v = localStorage.getItem(ANNOT_DOCK_KEY);
+        if (v !== null) dockOpen = v === '1';
+    } catch (e) {}
+
+    function applyDock(open) {
+        if (!annotDock) return;
+        annotDock.classList.toggle('open', open);
+        try { localStorage.setItem(ANNOT_DOCK_KEY, open ? '1' : '0'); } catch (e) {}
+    }
+    applyDock(dockOpen);
+
+    if (annotDockToggle) {
+        annotDockToggle.addEventListener('click', () => {
+            dockOpen = !dockOpen;
+            applyDock(dockOpen);
+        });
+    }
+
+    // 6. 导出到「当前文件夹」
     const exportBtn = document.getElementById('exportDataBtn');
     const exportDot = document.getElementById('exportDot');
     const IDB_NAME = 'pdf_annotator_fs';

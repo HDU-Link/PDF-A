@@ -1,5 +1,5 @@
 /**
- * 面板模块：截图 / 图片 / 公式 / 标注列表 / 网页框选截图 / 导入导出
+ * 面板模块：素材（截图+图片合并）/ 公式 / 标注列表 / 网页框选截图 / 导入导出
  */
 (function () {
     'use strict';
@@ -28,27 +28,45 @@
     }
 
     // ============================================================
-    // 截图面板
+    // 素材面板（截图 + 上传图片 合并）
     // ============================================================
-    function renderSnippetBoard() {
-        const board = App.$('snippetBoard');
-        const empty = App.$('snippetEmpty');
-        const count = App.$('snippetCount');
-        const clearAllBtn = App.$('clearAllSnippetsBtn');
+    function renderMediaBoard() {
+        const board = App.$('mediaBoard');
+        const count = App.$('mediaCount');
+        const clearAllBtn = App.$('clearAllMediaBtn');
         if (!board) return;
 
+        // 合并：snippets 和 images 都算素材，按时间倒序
+        const all = [
+            ...st.snippets.map(s => ({ ...s, _kind: 'snippet' })),
+            ...st.images.map(i => ({ ...i, _kind: 'image' }))
+        ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+        // ★ 清空 board（连旧的 empty 一起清掉）
         board.innerHTML = '';
-        if (st.snippets.length === 0) {
+
+        if (count) count.textContent = String(all.length);
+        if (clearAllBtn) clearAllBtn.disabled = all.length === 0;
+
+        if (all.length === 0) {
+            // ★ 每次新建 empty，不用变量引用，避免幽灵引用
+            const empty = document.createElement('div');
+            empty.className = 'snippet-empty';
+            empty.id = 'mediaEmpty';
+            empty.innerHTML = `
+                <i class="fas fa-images"></i>
+                <p>还没有素材</p>
+                <p style="font-size:0.78rem; margin-top:0.4rem;">
+                    用工具栏「截图」在 PDF 上框选，<br>
+                    或点「上传图片」，<br>
+                    也可用 <b>Win + Shift + S</b> 截图后上传。
+                </p>
+            `;
             board.appendChild(empty);
-            empty.style.display = 'flex';
-            count.textContent = '0';
-            clearAllBtn.disabled = true;
             return;
         }
-        count.textContent = String(st.snippets.length);
-        clearAllBtn.disabled = false;
 
-        st.snippets.forEach((s) => {
+        all.forEach((item) => {
             const card = document.createElement('div');
             card.className = 'snippet-card';
 
@@ -57,51 +75,81 @@
 
             const meta = document.createElement('div');
             meta.className = 'meta';
-            meta.innerHTML = `
-                <span class="page-tag">第 ${s.page} 页</span>
-                <span>${App.formatTime(s.timestamp)}</span>
-            `;
+            const sizeText = item._kind === 'image' ? App.formatSize(item.size) : '';
+            const nameHtml = item._kind === 'image'
+                ? `<span class="name-tag" title="${App.escapeHtml(item.name)}">${App.escapeHtml(item.name)}</span>`
+                : `<span class="page-tag">第 ${item.page} 页</span>`;
+            meta.innerHTML = `${nameHtml}${sizeText ? `<span>${sizeText}</span>` : ''}<span>${App.formatTime(item.timestamp)}</span>`;
 
             const actions = document.createElement('div');
             actions.className = 'snippet-card-actions';
 
+            // 贴到 PDF
             const placeBtn = document.createElement('button');
             placeBtn.title = '贴到 PDF 上';
             placeBtn.innerHTML = '<i class="fas fa-thumbtack"></i>';
-            placeBtn.addEventListener('click', () => {
+            placeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 if (typeof window.__annotatorPlaceImage === 'function') {
-                    window.__annotatorPlaceImage(s.dataUrl, '截图');
+                    window.__annotatorPlaceImage(item.dataUrl, item._kind === 'image' ? item.name : '截图');
                 } else {
                     alert('贴图功能未就绪');
                 }
             });
 
+            // 放大
             const zoomBtn = document.createElement('button');
             zoomBtn.title = '放大查看';
             zoomBtn.innerHTML = '<i class="fas fa-search-plus"></i>';
-            zoomBtn.addEventListener('click', () => openModal(s.dataUrl));
+            zoomBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openModal(item.dataUrl);
+            });
 
+            // 下载
+            const downloadBtn = document.createElement('button');
+            downloadBtn.title = '下载';
+            downloadBtn.innerHTML = '<i class="fas fa-download"></i>';
+            downloadBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const a = document.createElement('a');
+                a.href = item.dataUrl;
+                a.download = item._kind === 'image'
+                    ? (item.name || ('image_' + item.id))
+                    : ('snippet_' + item.id + '.png');
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+
+            // 删除
             const delBtn = document.createElement('button');
             delBtn.className = 'delete-btn';
             delBtn.title = '删除';
             delBtn.innerHTML = '<i class="fas fa-times"></i>';
-            delBtn.addEventListener('click', () => {
-                st.snippets = st.snippets.filter(x => x.id !== s.id);
-                renderSnippetBoard();
+            delBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (item._kind === 'snippet') {
+                    st.snippets = st.snippets.filter(x => x.id !== item.id);
+                } else {
+                    st.images = st.images.filter(x => x.id !== item.id);
+                }
                 App.saveToStorageDebounced();
+                renderMediaBoard();
             });
 
             actions.appendChild(placeBtn);
             actions.appendChild(zoomBtn);
+            actions.appendChild(downloadBtn);
             actions.appendChild(delBtn);
             header.appendChild(meta);
             header.appendChild(actions);
 
             const img = document.createElement('img');
             img.className = 'snippet-card-image';
-            img.src = s.dataUrl;
-            img.alt = `第 ${s.page} 页截图`;
-            img.addEventListener('click', () => openModal(s.dataUrl));
+            img.src = item.dataUrl;
+            img.alt = item.name || ('第 ' + item.page + ' 页截图');
+            img.addEventListener('click', () => openModal(item.dataUrl));
 
             card.appendChild(header);
             card.appendChild(img);
@@ -116,9 +164,9 @@
             page,
             timestamp: new Date()
         });
-        renderSnippetBoard();
+        renderMediaBoard();
         App.saveToStorageDebounced();
-        App.switchRightTab('snippetPanel');
+        App.switchRightTab('mediaPanel');
     }
 
     // ============================================================
@@ -189,7 +237,6 @@
             selectionBox.style.display = 'none';
             if (width < 8 || height < 8) return;
 
-            // 裁剪
             const layerRect = selectionLayer.getBoundingClientRect();
             const canvasRect = pdfCanvas.getBoundingClientRect();
             const offsetX = canvasRect.left - layerRect.left;
@@ -229,102 +276,8 @@
     }
 
     // ============================================================
-    // 图片面板
+    // 图片上传（并入素材面板）
     // ============================================================
-    function renderImageBoard() {
-        const board = App.$('imageBoard');
-        const empty = App.$('imageEmpty');
-        const count = App.$('imageCount');
-        const clearAllBtn = App.$('clearAllImagesBtn');
-        if (!board) return;
-
-        board.innerHTML = '';
-        if (st.images.length === 0) {
-            board.appendChild(empty);
-            empty.style.display = 'flex';
-            if (count) count.textContent = '0';
-            if (clearAllBtn) clearAllBtn.disabled = true;
-            return;
-        }
-        if (count) count.textContent = String(st.images.length);
-        if (clearAllBtn) clearAllBtn.disabled = false;
-
-        st.images.forEach((imgItem) => {
-            const card = document.createElement('div');
-            card.className = 'snippet-card';
-
-            const header = document.createElement('div');
-            header.className = 'snippet-card-header';
-
-            const meta = document.createElement('div');
-            meta.className = 'meta';
-            const sizeText = App.formatSize(imgItem.size);
-            meta.innerHTML = `
-                <span class="name-tag" title="${App.escapeHtml(imgItem.name)}">${App.escapeHtml(imgItem.name)}</span>
-                ${sizeText ? `<span>${sizeText}</span>` : ''}
-                <span>${App.formatTime(imgItem.timestamp)}</span>
-            `;
-
-            const actions = document.createElement('div');
-            actions.className = 'snippet-card-actions';
-
-            const placeBtn = document.createElement('button');
-            placeBtn.title = '贴到 PDF 上';
-            placeBtn.innerHTML = '<i class="fas fa-thumbtack"></i>';
-            placeBtn.addEventListener('click', () => {
-                if (typeof window.__annotatorPlaceImage === 'function') {
-                    window.__annotatorPlaceImage(imgItem.dataUrl, imgItem.name || '图片');
-                } else {
-                    alert('贴图功能未就绪');
-                }
-            });
-
-            const zoomBtn = document.createElement('button');
-            zoomBtn.title = '放大查看';
-            zoomBtn.innerHTML = '<i class="fas fa-search-plus"></i>';
-            zoomBtn.addEventListener('click', () => openModal(imgItem.dataUrl));
-
-            const downloadBtn = document.createElement('button');
-            downloadBtn.title = '下载图片';
-            downloadBtn.innerHTML = '<i class="fas fa-download"></i>';
-            downloadBtn.addEventListener('click', () => {
-                const a = document.createElement('a');
-                a.href = imgItem.dataUrl;
-                a.download = imgItem.name || ('image_' + imgItem.id);
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            });
-
-            const delBtn = document.createElement('button');
-            delBtn.className = 'delete-btn';
-            delBtn.title = '删除';
-            delBtn.innerHTML = '<i class="fas fa-times"></i>';
-            delBtn.addEventListener('click', () => {
-                st.images = st.images.filter(x => x.id !== imgItem.id);
-                renderImageBoard();
-                App.saveToStorageDebounced();
-            });
-
-            actions.appendChild(placeBtn);
-            actions.appendChild(zoomBtn);
-            actions.appendChild(downloadBtn);
-            actions.appendChild(delBtn);
-            header.appendChild(meta);
-            header.appendChild(actions);
-
-            const img = document.createElement('img');
-            img.className = 'snippet-card-image';
-            img.src = imgItem.dataUrl;
-            img.alt = imgItem.name;
-            img.addEventListener('click', () => openModal(imgItem.dataUrl));
-
-            card.appendChild(header);
-            card.appendChild(img);
-            board.appendChild(card);
-        });
-    }
-
     function addImage(dataUrl, name, size) {
         st.images.push({
             id: Date.now() + '-' + Math.random().toString(36).slice(2, 8),
@@ -333,14 +286,14 @@
             size: size || 0,
             timestamp: new Date()
         });
-        renderImageBoard();
+        renderMediaBoard();
         App.saveToStorageDebounced();
-        App.switchRightTab('imagePanel');
+        App.switchRightTab('mediaPanel');
     }
 
-    function initImagePanel() {
+    function initMediaPanel() {
         const imageUpload = App.$('imageUpload');
-        const clearAllImagesBtn = App.$('clearAllImagesBtn');
+        const clearAllBtn = App.$('clearAllMediaBtn');
 
         if (imageUpload) {
             imageUpload.addEventListener('change', (e) => {
@@ -353,16 +306,17 @@
                     reader.readAsDataURL(file);
                 });
                 e.target.value = '';
-                App.switchRightTab('imagePanel');
+                App.switchRightTab('mediaPanel');
             });
         }
 
-        if (clearAllImagesBtn) {
-            clearAllImagesBtn.addEventListener('click', () => {
-                if (st.images.length === 0) return;
-                if (confirm('确定清空所有上传的图片吗？')) {
+        if (clearAllBtn) {
+            clearAllBtn.addEventListener('click', () => {
+                if (st.snippets.length === 0 && st.images.length === 0) return;
+                if (confirm('确定清空所有素材（截图 + 图片）吗？')) {
+                    st.snippets = [];
                     st.images = [];
-                    renderImageBoard();
+                    renderMediaBoard();
                     App.saveToStorageDebounced();
                 }
             });
@@ -374,7 +328,6 @@
     // ============================================================
     function renderFormulaList() {
         const list = App.$('formulaList');
-        const empty = App.$('formulaEmpty');
         const count = App.$('formulaCount');
         const mathfield = App.$('mathfield');
         if (!list) return;
@@ -389,14 +342,23 @@
             }
         }
 
+        // ★ 清空
         list.innerHTML = '';
+        if (count) count.textContent = String(st.formulas.length);
+
         if (st.formulas.length === 0) {
+            // ★ 每次新建 empty
+            const empty = document.createElement('div');
+            empty.className = 'snippet-empty';
+            empty.id = 'formulaEmpty';
+            empty.style.padding = '1.5rem';
+            empty.innerHTML = `
+                <i class="fas fa-square-root-alt"></i>
+                <p>还没有保存的公式</p>
+            `;
             list.appendChild(empty);
-            empty.style.display = 'flex';
-            count.textContent = '0';
             return;
         }
-        count.textContent = String(st.formulas.length);
 
         st.formulas.forEach((f) => {
             const item = document.createElement('div');
@@ -433,15 +395,17 @@
             const copyBtn = document.createElement('button');
             copyBtn.title = '复制 LaTeX';
             copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
-            copyBtn.addEventListener('click', () => {
+            copyBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 navigator.clipboard.writeText(f.latex).catch(() => {});
             });
 
             const editBtn = document.createElement('button');
             editBtn.title = '载入编辑器';
             editBtn.innerHTML = '<i class="fas fa-edit"></i>';
-            editBtn.addEventListener('click', () => {
-                try { mathfield.setValue(f.latex || ''); } catch (e) {}
+            editBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                try { mathfield.setValue(f.latex || ''); } catch (err) {}
                 if (mathfield) mathfield.focus();
             });
 
@@ -449,10 +413,11 @@
             delBtn.className = 'delete-btn';
             delBtn.title = '删除';
             delBtn.innerHTML = '<i class="fas fa-times"></i>';
-            delBtn.addEventListener('click', () => {
+            delBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 st.formulas = st.formulas.filter(x => x.id !== f.id);
-                renderFormulaList();
                 App.saveToStorageDebounced();
+                renderFormulaList();
             });
 
             actions.appendChild(copyBtn);
@@ -487,6 +452,38 @@
                     mathfield.mathVirtualKeyboardPolicy = 'auto';
                 }
             } catch (e) {}
+
+            // ★ Shift + Enter 换行
+            // 若当前不在多行环境（aligned/gather/matrix/cases/array），自动包一层 aligned；
+            // 已在多行环境中则直接插入 \\ 换行
+            mathfield.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.shiftKey) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    try {
+                        const cur = mathfield.getValue('latex') || '';
+                        if (!/\\begin\{(aligned|gather|matrix|cases|array)/.test(cur)) {
+                            // 首次换行：包成 aligned 环境
+                            mathfield.setValue('\\begin{aligned} ' + cur + ' \\end{aligned}');
+                            // 光标移到末尾
+                            try {
+                                const len = (mathfield.getValue('latex') || '').length;
+                                mathfield.position = len;
+                            } catch (e2) {}
+                        } else {
+                            // 已在多行环境里，插入换行
+                            try {
+                                mathfield.insert('\\\\');
+                            } catch (err) {
+                                try { mathfield.executeCommand('insert', '\\\\'); } catch (e3) {}
+                            }
+                        }
+                    } catch (err) {
+                        console.warn('公式换行失败：', err);
+                    }
+                    return false;
+                }
+            }, true);
         }
 
         if (saveBtn) {
@@ -535,7 +532,6 @@
     // ============================================================
     function renderAnnotList() {
         const list = App.$('annotList');
-        const empty = App.$('annotListEmpty');
         const count = App.$('annotListCount');
         const toggleAllBtn = App.$('annotToggleAllBtn');
         const clearPageBtn = App.$('annotClearPageBtn');
@@ -547,8 +543,19 @@
         if (count) count.textContent = String(items.length);
 
         if (items.length === 0) {
-            list.appendChild(empty);
-            empty.style.display = 'flex';
+            // ★ 每次新建 empty
+            const emptyEl = document.createElement('div');
+            emptyEl.className = 'snippet-empty';
+            emptyEl.id = 'annotListEmpty';
+            emptyEl.innerHTML = `
+                <i class="fas fa-list-ul"></i>
+                <p>本页还没有标注</p>
+                <p style="font-size:0.78rem; margin-top:0.4rem;">
+                    用工具栏在 PDF 上画线、箭头、矩形、高亮、<br>
+                    文字或贴图后，会出现在这里。
+                </p>
+            `;
+            list.appendChild(emptyEl);
             if (toggleAllBtn) toggleAllBtn.disabled = true;
             if (clearPageBtn) clearPageBtn.disabled = true;
             return;
@@ -648,7 +655,6 @@
             });
         }
 
-        // 翻页时刷新
         let lastPage = 1;
         setInterval(() => {
             if (!window.__annotatorList) return;
@@ -821,7 +827,7 @@
                 0, 0, out.width, out.height
             );
             addImage(out.toDataURL('image/png'), `网页截图_${Date.now()}.png`, 0);
-            App.switchRightTab('imagePanel');
+            App.switchRightTab('mediaPanel');
         } catch (e) {
             console.error('网页截图失败：', e);
             alert('截图失败：' + (e && e.message ? e.message : '未知错误'));
@@ -892,8 +898,7 @@
                         st.snippets.forEach(s => { if (s.timestamp) s.timestamp = new Date(s.timestamp); });
                         st.images.forEach(i => { if (i.timestamp) i.timestamp = new Date(i.timestamp); });
                         st.formulas.forEach(f => { if (f.timestamp) f.timestamp = new Date(f.timestamp); });
-                        renderSnippetBoard();
-                        renderImageBoard();
+                        renderMediaBoard();
                         renderFormulaList();
                         App.saveToStorage();
                         alert('导入完成');
@@ -912,20 +917,18 @@
     // ============================================================
     App.initPanels = function () {
         initPdfSnip();
-        initImagePanel();
+        initMediaPanel();
         initFormulaPanel();
         initAnnotListPanel();
         initWebSnip();
         initImportExport();
 
-        renderSnippetBoard();
-        renderImageBoard();
+        renderMediaBoard();
         renderFormulaList();
     };
 
     // 暴露给其它模块
-    App.renderSnippetBoard = renderSnippetBoard;
-    App.renderImageBoard = renderImageBoard;
+    App.renderMediaBoard = renderMediaBoard;
     App.renderFormulaList = renderFormulaList;
     App.renderAnnotList = renderAnnotList;
     App.addSnippet = addSnippet;
